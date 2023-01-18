@@ -1,0 +1,17 @@
+.vscode
+deepstream/deepstream_apps/samples
+deepstream/deepstream_apps/.ipynb_checkpoints
+deepstream/deepstream_apps/objectDetector_Yolo/
+deepstream/deepstream_apps/objectDetector_SSD/
+deepstream/deepstream_apps/objectDetector_FasterRCNN/
+deepstream/deepstream_apps/Primary_Detector
+deepstream/deepstream_apps/MultiObjectTracker
+deepstream/deepstream_apps/Secondary_CarColor
+deepstream/deepstream_apps/Secondary_CarMake
+deepstream/deepstream_apps/Secondary_VehicleTypes
+tensorrt/getting_started/
+tensorrt/*.onnx
+tensorrt/*.trt
+tensorrt/*.engine
+tensorrt/__pycache__
+pytorch_tensorrt

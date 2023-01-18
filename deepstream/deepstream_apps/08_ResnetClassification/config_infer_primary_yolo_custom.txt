@@ -1,0 +1,30 @@
+[property]
+gpu-id=0
+gie-unique-id=1
+batch-size=16
+
+maintain-aspect-ratio=0
+net-scale-factor=0.0039215697906911373 #1/255
+model-color-format=0 #RGB/BGR
+
+network-type=0 #detector
+network-mode=2 #FP16
+process-mode=1 #primary
+cluster-mode=2 # para detectores y sementacion instancias
+
+num-detected-classes=1
+
+model-engine-file=/yolo/yolov4_custom.engine
+labelfile-path=/yolo/labels_yolo.txt
+custom-lib-path=/lib/lib_custom_yolo.so ??
+
+parse-bbox-func-name=NvDsInferParseCustomYoloV4 ??
+
+
+[class-attrs-all]
+nms-iou-threshold=0.5
+pre-cluster-threshold=0.5
+roi-top-offset=0 #margenes
+roi-bottom-offset=0 #margenes
+
+

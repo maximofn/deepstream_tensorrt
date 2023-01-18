@@ -1,0 +1,25 @@
+version: "3.3"
+
+services:
+  deepstream61:
+    container_name: ds61
+    image: maximofn/deepstream61:dev_1.0.7
+    build: .
+    runtime: nvidia
+    command: jupyter notebook --allow-root --ip=0.0.0.0 --port=8888 --no-browser
+    volumes:
+      - /tmp/.X11-unix/:/tmp/.X11-unix/
+      - ../deepstream/deepstream_apps:/opt/nvidia/deepstream/deepstream-6.1/sources/deepstream_apps
+      - ../tensorrt:/opt/nvidia/deepstream/deepstream-6.1/sources/tensorrt
+      - ../onnx:/opt/nvidia/deepstream/deepstream-6.1/sources/onnx
+    devices:
+      - "/dev/video0:/dev/video0"
+    environment:
+      - DISPLAY=$DISPLAY
+    network_mode: "host"
+    ports:
+      - "8554:8554"
+      - "8888:8888"
+    privileged: true
+    stdin_open: true
+    tty: true

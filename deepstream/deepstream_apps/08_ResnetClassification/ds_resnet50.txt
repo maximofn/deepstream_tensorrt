@@ -1,0 +1,37 @@
+[property]
+gpu-id=0
+# 1/255
+net-scale-factor=0.0039215697906911373
+model-engine-file=../Primary_Detector/model_files/resnet50_engine_pytorch_BS1.engine
+labelfile-path=../Primary_Detector/label_files/imagenet_labels.txt
+force-implicit-batch-dim=1
+batch-size=1
+network-mode=1
+num-detected-classes=4
+interval=0
+gie-unique-id=1
+output-blob-names=fc
+classifier-threshold=0.7
+is-classifier=1
+
+
+[class-attrs-all]
+pre-cluster-threshold=0.2
+eps=0.2
+group-threshold=1
+
+# for vehicles
+[class-attrs-0]
+is-classifier=1
+
+# for bicycles
+[class-attrs-1]
+is-classifier=1
+
+# for persons
+[class-attrs-2]
+is-classifier=1
+
+# for roadsigns
+[class-attrs-3]
+is-classifier=1

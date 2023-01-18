@@ -1,0 +1,21 @@
+[property]
+gpu-id=0
+gie-unique-id=10
+batch-size=16
+
+maintain-aspect-ratio=0
+net-scale-factor=0.0039215697906911373
+model-color-format=0
+
+network-type=1
+network-mode=0
+process-mode=2
+
+operate-on-gie-id=1
+operate-on-class-ids=0 #Sobre que clase hacemos inferencia del clasificador
+
+model-engine-file=/gender/gender.engine
+labelfile-path=/gender/labels_gender.txt
+
+classifier-threshold=0.4
+
