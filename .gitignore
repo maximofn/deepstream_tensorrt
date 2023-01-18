@@ -9,6 +9,7 @@ deepstream/deepstream_apps/MultiObjectTracker
 deepstream/deepstream_apps/Secondary_CarColor
 deepstream/deepstream_apps/Secondary_CarMake
 deepstream/deepstream_apps/Secondary_VehicleTypes
+deepstream/deepstream_apps/10_Marta/yolov7-nms.engine
 tensorrt/getting_started/
 tensorrt/*.onnx
 tensorrt/*.trt
