@@ -20,4 +20,6 @@ RUN pip install onnxruntime
 
 RUN echo "export POLYGRAPHY_AUTOINSTALL_DEPS=1" >> ~/.bashrc
 
+RUN pip install segmentation-models-pytorch
+
 WORKDIR /opt/nvidia/deepstream/deepstream-6.1/sources/
