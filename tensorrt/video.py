@@ -28,7 +28,7 @@ class video():
     
     def imshow(self, frame):
         # Print in botom of frame the frame shape
-        cv2.putText(frame, f"{self.name} shape: {frame.shape}", (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 3, (179,147,97), 3)
+        cv2.putText(frame, f"{self.name} shape: {frame.shape}", (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (179,147,97), 1)
         cv2.imshow(self.name, frame)
         if cv2.waitKey(1) == ord('q'):
             return False
