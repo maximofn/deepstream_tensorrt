@@ -1,5 +1,10 @@
 import tensorrt as trt
 
+# execute bash command
+import subprocess
+command = "/usr/src/tensorrt/bin/trtexec --onnx=resnet50custom.onnx --saveEngine=resnet50custom_terminal.engine  --explicitBatch --inputIOFormats=fp16:chw --outputIOFormats=fp16:chw --fp16"
+subprocess.call(command, shell=True)
+
 print("Export no cuda model")
 # To create a builder, you must first create a logger
 loggerNoCuda = trt.Logger(trt.Logger.WARNING)
