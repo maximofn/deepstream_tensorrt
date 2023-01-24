@@ -68,17 +68,17 @@ class Resnet50custom(nn.Module):
         # Input image is a numpy array with shape (H, W, C)
         # Preprocess image
         # img = img / 255.0                   # 0-255 to 0-1
-        # img = img.permute(2, 0, 1)          # HWC to CHW
-        # img = img.unsqueeze(0)              # Add batch dimension
+        img = img.permute(2, 0, 1)          # HWC to CHW
+        img = img.unsqueeze(0)              # Add batch dimension
         # Output image is a torch tensor with shape (1, C, H, W)
 
         # Inference
         probs = self.resnet50(img)
-        return probs
 
         # Postprocess
         probs = torch.nn.functional.softmax(probs, dim=1)
         probs = probs.squeeze(0)
+        return probs
         # prob, idx = torch.max(probs, dim=0)
         # # prob = prob.item()
         # # idx = int(idx.item())
@@ -87,13 +87,15 @@ model = Resnet50custom().eval().cuda()
 
 # convert to TensorRT feeding sample data as input
 print("Converting to TensorRT")
-x = np.ones((224, 224, 3), dtype=np.uint8)
+width = 1920 # 1920
+height = 1088 # 1088
+x = np.ones((width, height, 3), dtype=np.uint8)
 x = torch.from_numpy(x).float()
 x = x.cuda()
-x = x / 255.0                   # 0-255 to 0-1
-x = x.permute(2, 0, 1)          # HWC to CHW
-x = x.unsqueeze(0)              # Add batch dimension
 x = torch.flip(x, dims=[2])
+x = x / 255.0                   # 0-255 to 0-1
+# x = x.permute(2, 0, 1)          # HWC to CHW
+# x = x.unsqueeze(0)              # Add batch dimension
 model_trt = torch2trt(model, [x])
 print("Converted to TensorRT")
 
@@ -107,13 +109,13 @@ while True:
 
     # Preprocess image
     t0 = time.time()
-    img = cv2.resize(frame, (224, 224))
+    img = cv2.resize(frame, (height, width))
     img = torch.from_numpy(img)
     img = img.cuda()
     img = torch.flip(img, dims=[2])
     img = img / 255.0                   # 0-255 to 0-1
-    img = img.permute(2, 0, 1)          # HWC to CHW
-    img = img.unsqueeze(0)              # Add batch dimension
+    # img = img.permute(2, 0, 1)          # HWC to CHW
+    # img = img.unsqueeze(0)              # Add batch dimension
     t_preprocess = time.time() - t0
 
     # Inference
@@ -123,8 +125,8 @@ while True:
 
     # Postprocess
     t0 = time.time()
-    probs = torch.nn.functional.softmax(probs, dim=1)
-    probs = probs.squeeze(0)
+    # probs = torch.nn.functional.softmax(probs, dim=1)
+    # probs = probs.squeeze(0)
     prob, idx = torch.max(probs, dim=0)
     t_postprocess = time.time() - t0
 
