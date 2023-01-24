@@ -28,4 +28,8 @@ RUN pip install segmentation-models-pytorch
 
 RUN pip install matplotlib
 
+RUN git clone https://github.com/NVIDIA-AI-IOT/torch2trt.git
+
+RUN cd torch2trt && python setup.py install
+
 WORKDIR /opt/nvidia/deepstream/deepstream-6.1/sources/
