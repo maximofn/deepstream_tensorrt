@@ -16,14 +16,16 @@ input_thread = InputThread()
 input_thread.start()
 
 # Create UDP socket
-sock = udp_socket('localhost', 8554, send=True)
+sock_frame = udp_socket('localhost', 8554, send=True)
+sock_mask = udp_socket('localhost', 8555, send=True)
 
 # Open webcam
 CAPTURE_WIDTH = 1920
 CAPTURE_HEIGHT = 1080
 CAPTURE_FPS = 30
-video = video(resize=False, width=CAPTURE_WIDTH, height=CAPTURE_HEIGHT, fps=CAPTURE_FPS, name="frame", display=False)
-video.open(device=0)
+video_frame = video(resize=False, width=CAPTURE_WIDTH, height=CAPTURE_HEIGHT, fps=CAPTURE_FPS, name="frame", display=False)
+video_mask = video(resize=False, width=CAPTURE_WIDTH, height=CAPTURE_HEIGHT, fps=CAPTURE_FPS, name="mask", display=False)
+video_frame.open(device=0)
 
 # Configuration of text on the screen
 font = cv2.FONT_HERSHEY_SIMPLEX
@@ -78,6 +80,7 @@ class segmentation(nn.Module):
         # Postprocess mask
         # mask = torch.argmax(mask, axis=1)
         # mask = mask.squeeze(0).type(torch.uint8)
+        mask = mask.squeeze(0).permute(1, 2, 0)         # CHW to HWC
         # Mask is a torch tensor with shape (H, W)
 
         # Postprocess mask
@@ -86,12 +89,12 @@ class segmentation(nn.Module):
         # Image is a torch tensor with shape (H, W, C)
 
         return mask#, img
-model = segmentation().eval().cuda()
+model = segmentation(classes=3).eval().cuda()
 
 # convert to TensorRT feeding sample data as input
 print("Converting to TensorRT")
-width = 224 # 1920
-height = 224 # 1088
+width = 320 # 1920
+height = 320 # 1088
 x = np.ones((1, 3, width, height), dtype=np.uint8)
 x = torch.from_numpy(x).float()
 x = x.cuda()
@@ -105,7 +108,7 @@ print("Converted to TensorRT")
 while True:
     t0 = time.time()
     t_start = time.time()
-    ret, frame = video.read()
+    ret, frame = video_frame.read()
     t_camera = time.time() - t0
     if not ret:
         continue
@@ -122,12 +125,11 @@ while True:
     # Inference
     t0 = time.time()
     mask = model_trt(img)
-    print(mask.shape)
     t_inference = time.time() - t0
 
     # Postprocess
     t0 = time.time()
-    # mask = mask.detach().cpu().numpy()
+    mask = mask.detach().cpu().numpy()
     # frame = frame.detach().cpu().numpy()
     t_postprocess = time.time() - t0
 
@@ -142,7 +144,7 @@ while True:
     cv2.putText(frame, f"Modelo en GPU:", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"FPS: {FPS:.2f}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"Image shape: {frame.shape}, img dtype: {frame.dtype}, img max: {frame.max()}, img min: {frame.min()}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
-    cv2.putText(frame, f"Mask shape: {mask.shape}, mask dtype: {mask.dtype}, mask max: {mask.max()}, mask min: {mask.min()}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
+    cv2.putText(frame, f"Mask shape: {mask.shape}, mask dtype: {mask.dtype}, mask max: {mask.max():0.2f}, mask min: {mask.min():0.2f}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"t camera: {t_camera*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"t preprocess: {t_preprocess*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"t inference: {t_inference*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
@@ -167,16 +169,16 @@ while True:
         cv2.putText(frame, f"    FPS {np.mean(FPS_list):.2f}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
 
     # Mandamos el frame por el socket
-    success, encoded_frame = video.encode_frame(frame)
+    success, encoded_frame = video_frame.encode_frame(frame)
     if success:
         message = encoded_frame.tobytes(order='C')
-        sock.send(message)
+        sock_frame.send(message)
 
     # Mandamos la máscara por el socket
-    # success, encoded_frame = video.encode_frame(mask_pred)
-    # if success:
-    #     message = encoded_frame.tobytes(order='C')
-    #     sock.send(message)
+    success, encoded_mask = video_mask.encode_frame(mask)
+    if success:
+        message = encoded_mask.tobytes(order='C')
+        sock_mask.send(message)
 
     # If user press type 'q' into the console in non blocking mode, exit
     if input_thread.get_data() is not None and input_thread.get_data().strip() == 'q':
@@ -186,5 +188,7 @@ while True:
 
 
 # Cerramos el socket y la cámara
-sock.close()
-video.close()
+sock_frame.close()
+sock_mask.close()
+video_frame.close()
+video_mask.close()
