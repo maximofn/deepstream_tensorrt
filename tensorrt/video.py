@@ -36,11 +36,12 @@ class video():
             return True
     
     def encode_frame(self, frame, format='.jpg'):
-        return cv2.imencode(format, frame)
+        return cv2.imencode(format, frame, [cv2.IMWRITE_JPEG_QUALITY,80])
     
     def decode_frame(self, frame, codec='mp4v', fps=30):
         return cv2.imdecode(self.frame, cv2.IMREAD_UNCHANGED)
     
     def close(self):
-        self.cap.release()
+        if self.cap is not None:
+            self.cap.release()
         cv2.destroyAllWindows()

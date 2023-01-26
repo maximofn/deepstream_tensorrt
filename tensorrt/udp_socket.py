@@ -1,7 +1,6 @@
 import socket
 import numpy as np
 import cv2
-# import time
 
 class udp_socket():
     def __init__(self, ip, port, max_buffer_size=65000, len_start_message=10, len_end_message=20, send=False):
@@ -11,6 +10,7 @@ class udp_socket():
         self.len_start_message = len_start_message
         self.len_end_message = len_end_message
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,max_buffer_size)
         if not send: self.sock.bind((self.ip, self.port))
         self.len_message = 0
         self.len_message_old = 0
@@ -59,7 +59,7 @@ class udp_socket():
             return False
 
     def decode_frame(self):
-        self.frame_decoded = cv2.imdecode(self.frame, cv2.IMREAD_UNCHANGED)
+        self.frame_decoded = cv2.imdecode(self.frame, 1)
         self.shape_frame_decoded = self.frame_decoded.shape
     
     def get_frame_decoded(self):
@@ -76,16 +76,12 @@ class udp_socket():
             return False
     
     def send(self, message):
-        self.sock.sendto(message[:self.len_start_message], ('localhost', 8554))
-        # print("Send start")
+        self.sock.sendto(message[:self.len_start_message], (self.ip, self.port))
         send = 0
         for i in range(0, len(message), self.max_buffer_size):
-            self.sock.sendto(message[i:i + self.max_buffer_size], ('localhost', 8554))
+            self.sock.sendto(message[i:i + self.max_buffer_size], (self.ip, self.port))
             send += len(message[i:i + self.max_buffer_size])
-            # print(f"Send: {send} / {len(message)}")
-            # time.sleep(0.001)
-        # print("Send end")
-        self.sock.sendto(message[:self.len_end_message], ('localhost', 8554))
+        self.sock.sendto(message[:self.len_end_message], (self.ip, self.port))
         
     def close(self):
         self.sock.close()
