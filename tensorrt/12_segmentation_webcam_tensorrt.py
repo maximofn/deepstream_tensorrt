@@ -40,7 +40,8 @@ t_camera = 0
 t_preprocess = 0
 t_inference = 0
 t_postprocess = 0
-t_bucle = 0
+t_bucle_read_frame = 0
+t_bucle_no_read_frame = 0
 FPS = 0
 
 # Media variables
@@ -51,7 +52,8 @@ t_preprocess_list = []
 t_model_gpu_list = []
 t_inference_list = []
 t_postprocess_list = []
-t_bucle_list = []
+t_bucle_read_frame_list = []
+t_bucle_no_read_frame_list = []
 FPS_list = []
 
 # Custom model
@@ -86,8 +88,9 @@ model = segmentation().eval().cuda()
 
 # convert to TensorRT feeding sample data as input
 print("Converting to TensorRT")
-width = 320 # 1920
-height = 320 # 1088
+mult = 21
+width = 32*mult # 1920
+height = 32*mult # 1088
 x = np.ones((width, height, 3), dtype=np.uint8)
 x = torch.from_numpy(x).float() # numpy to tensor
 x = x.cuda()                    # move image to GPU
@@ -129,10 +132,11 @@ while True:
     t_postprocess = time.time() - t0
 
     # Bucle time
-    t_bucle = time.time() - t_start
+    t_bucle_no_read_frame = t_preprocess + t_inference + t_postprocess
+    t_bucle_read_frame = time.time() - t_start
 
     # FPS
-    FPS = 1 / t_bucle
+    FPS = 1 / t_bucle_no_read_frame
 
     # Put text
     y = 30
@@ -144,7 +148,8 @@ while True:
     cv2.putText(frame, f"t preprocess: {t_preprocess*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"t inference: {t_inference*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"t postprocess: {t_postprocess*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
-    cv2.putText(frame, f"t bucle: {t_bucle*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
+    cv2.putText(frame, f"t bucle (read frame): {t_bucle_read_frame*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
+    cv2.putText(frame, f"t bucle (no read frame): {t_bucle_no_read_frame*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
 
     # Media variables
     iteracctions += 1
@@ -153,14 +158,16 @@ while True:
         t_preprocess_list.append(t_preprocess)
         t_inference_list.append(t_inference)
         t_postprocess_list.append(t_postprocess)
-        t_bucle_list.append(t_bucle)
+        t_bucle_read_frame_list.append(t_bucle_read_frame)
+        t_bucle_no_read_frame_list.append(t_bucle_no_read_frame)
         FPS_list.append(FPS)
         cv2.putText(frame, f"Media: {iteracctions} iteracctions", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
         cv2.putText(frame, f"    t read frame {np.mean(t_read_frame_list)*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
         cv2.putText(frame, f"    t preprocess {np.mean(t_preprocess_list)*1000:.2f} ms,", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
         cv2.putText(frame, f"    t inference {np.mean(t_inference_list)*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
         cv2.putText(frame, f"    t postprocess {np.mean(t_postprocess_list)*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
-        cv2.putText(frame, f"    t bucle {np.mean(t_bucle_list)*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
+        cv2.putText(frame, f"    t bucle (read frame) {np.mean(t_bucle_read_frame_list)*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
+        cv2.putText(frame, f"    t bucle (no read frame) {np.mean(t_bucle_no_read_frame_list)*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
         cv2.putText(frame, f"    FPS {np.mean(FPS_list):.2f}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
 
     # Mandamos el frame por el socket
