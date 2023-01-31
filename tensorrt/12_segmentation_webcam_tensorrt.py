@@ -64,13 +64,12 @@ class segmentation(nn.Module):
     def forward(self, img):
         # Input image is a numpy array with shape (H, W, C)
         # Preprocess image
-        # img = torch.from_numpy(img)             # TODO: Quitar para tensorrt
+        # img = torch.from_numpy(img)             # Numpy to torch
+        # img = img.cuda()                        # CPU to GPU
         # img = torch.flip(img, dims=[2])         # RGB to BGR
-        # # img = self.resize(img)                 # Resize
-        # img = img.permute(2, 0, 1)              # HWC to CHW
-        # img = (img / 255.0).type(torch.float32) # 0-255 to 0-1
-        # img = img.unsqueeze(0)                  # Add batch dimension
-        # img = img.cuda()                        # TODO: Quitar para tensorrt
+        # img = img / 255.0                       # 0-255 to 0-1
+        img = img.permute(2, 0, 1)              # HWC to CHW
+        img = img.unsqueeze(0)                  # Add batch dimension
         # Output image is a torch tensor with shape (1, C, H, W)
 
         # Inference
@@ -78,30 +77,24 @@ class segmentation(nn.Module):
         # Mask is a torch tensor with shape (1, C, H, W)
 
         # Postprocess mask
-        # mask = torch.argmax(mask, axis=1)
-        # mask = mask.squeeze(0).type(torch.uint8)
-        mask = mask.squeeze(0).permute(1, 2, 0)         # CHW to HWC
+        mask = mask.squeeze(0)                # Remove batch dimension
+        # mask = torch.argmax(mask, axis=0)   # CHW to HW
         # Mask is a torch tensor with shape (H, W)
 
-        # Postprocess mask
-        # img = img.squeeze(0).permute(1, 2, 0) * 255         # CHW to HWC
-        # img = torch.flip(img, dims=[2]).type(torch.uint8)   # RGB to BGR
-        # Image is a torch tensor with shape (H, W, C)
-
-        return mask#, img
-model = segmentation(classes=3).eval().cuda()
+        return mask
+model = segmentation().eval().cuda()
 
 # convert to TensorRT feeding sample data as input
 print("Converting to TensorRT")
 width = 320 # 1920
 height = 320 # 1088
-x = np.ones((1, 3, width, height), dtype=np.uint8)
-x = torch.from_numpy(x).float()
-x = x.cuda()
-x = torch.flip(x, dims=[2])
+x = np.ones((width, height, 3), dtype=np.uint8)
+x = torch.from_numpy(x).float() # numpy to tensor
+x = x.cuda()                    # move image to GPU
+x = torch.flip(x, dims=[2])     # RGB to BGR
 x = x / 255.0                   # 0-255 to 0-1
-# x = x.permute(2, 0, 1)          # HWC to CHW
-# x = x.unsqueeze(0)              # Add batch dimension
+# x = x.permute(2, 0, 1)        # HWC to CHW
+# x = x.unsqueeze(0)            # Add batch dimension
 model_trt = torch2trt(model, [x])
 print("Converted to TensorRT")
 
@@ -115,11 +108,13 @@ while True:
 
     # Preprocess image
     t0 = time.time()
-    img = cv2.resize(frame, (height, width))
-    img = torch.from_numpy(img)
-    img = img.cuda()
-    img = torch.flip(img, dims=[2])
-    img = img / 255.0    
+    img = cv2.resize(frame, (height, width))    # Resize
+    img = torch.from_numpy(img)                 # numpy to tensor
+    img = img.cuda()                            # move image to GPU
+    img = torch.flip(img, dims=[2])             # RGB to BGR
+    img = img / 255.0                           # 0-255 to 0-1
+    # img = img.permute(2, 0, 1)                # HWC to CHW
+    # img = img.unsqueeze(0)                    # Add batch dimension
     t_preprocess = time.time() - t0
 
     # Inference
@@ -129,8 +124,8 @@ while True:
 
     # Postprocess
     t0 = time.time()
+    mask = torch.argmax(mask, axis=0).type(torch.uint8)
     mask = mask.detach().cpu().numpy()
-    # frame = frame.detach().cpu().numpy()
     t_postprocess = time.time() - t0
 
     # Bucle time
@@ -143,8 +138,8 @@ while True:
     y = 30
     cv2.putText(frame, f"Modelo en GPU:", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"FPS: {FPS:.2f}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
-    cv2.putText(frame, f"Image shape: {frame.shape}, img dtype: {frame.dtype}, img max: {frame.max()}, img min: {frame.min()}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
-    cv2.putText(frame, f"Mask shape: {mask.shape}, mask dtype: {mask.dtype}, mask max: {mask.max():0.2f}, mask min: {mask.min():0.2f}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
+    cv2.putText(frame, f"Image shape: {frame.shape}, image type: {type(frame)}, img dtype: {frame.dtype}, img max: {frame.max()}, img min: {frame.min()}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
+    cv2.putText(frame, f"Mask shape: {mask.shape}, mask type: {type(mask)}, mask dtype: {mask.dtype}, mask max: {mask.max():0.2f}, mask min: {mask.min():0.2f}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"t camera: {t_camera*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"t preprocess: {t_preprocess*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"t inference: {t_inference*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
