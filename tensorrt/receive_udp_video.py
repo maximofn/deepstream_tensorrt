@@ -18,11 +18,13 @@ while True:
         frame_decoded = socket_frame.get_frame_decoded()
         if RESIZE: frame_decoded = frame.resize_frame(frame_decoded, width=127, height=170)
         if not frame.imshow(frame_decoded): break
+
+    socket_mask.receive()
     # Si hemos recibido la máscara copleta, la mostramos
     if socket_mask.receive_frame_ready():
         mask_decoded = socket_mask.get_frame_decoded()
         if RESIZE: mask_decoded = mask.resize_frame(mask_decoded, width=127, height=170)
-        if not mask.imshow(mask_decoded): break
+        if not mask.maskshow(mask_decoded): break
 
 # Cerramos la ventana y el socket
 frame.close()

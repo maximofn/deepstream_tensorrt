@@ -35,6 +35,16 @@ class video():
         else:
             return True
     
+    def maskshow(self, mask):
+        # Print in botom of mask the mask shape
+        cv2.putText(mask, f"{self.name} shape: {mask.shape}", (10, mask.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (179,147,97), 1)
+        mask_color = cv2.applyColorMap(mask, cv2.COLORMAP_JET)
+        cv2.imshow(self.name, mask_color)
+        if cv2.waitKey(1) == ord('q'):
+            return False
+        else:
+            return True
+    
     def encode_frame(self, frame, format='.jpg'):
         return cv2.imencode(format, frame, [cv2.IMWRITE_JPEG_QUALITY,80])
     
