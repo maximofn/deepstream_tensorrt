@@ -17,3 +17,4 @@ tensorrt/*.engine
 tensorrt/__pycache__
 pytorch_tensorrt
 tensorrt/S2-FPN/builders/__pycache__
+tensorrt/S2-FPN/dataset/__pycache__
