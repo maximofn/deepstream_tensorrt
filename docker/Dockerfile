@@ -32,4 +32,10 @@ RUN git clone https://github.com/NVIDIA-AI-IOT/torch2trt.git
 
 RUN cd torch2trt && python setup.py install
 
+# S2-FPN
+RUN pip install opencv-python pillow numpy matplotlib
+RUN pip install torchsummary torchsummaryX seaborn
+RUN git clone https://github.com/mohamedac29/S2-FPN
+
+
 WORKDIR /opt/nvidia/deepstream/deepstream-6.1/sources/
