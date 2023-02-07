@@ -135,16 +135,21 @@ def inference(model):
         image = torch.from_numpy(image)
         image = image[None,:,:,:]
 
+
         with torch.no_grad():
             input_var = Variable(image).cuda()
         start_time = time.time()
         output = model(input_var) #,output5,output6,output7,output8
+        print(f"output shape: {output.shape}")
         torch.cuda.synchronize()
         time_taken = time.time() - start_time
         print('[%d/%d]  time: %.2f' % (i + 1, n_ims, time_taken))
         output = output.cpu().data[0].numpy()
+        print(f"output shape: {output.shape}")
         output = output.transpose(1, 2, 0)
+        print(f"output shape: {output.shape}")
         output = np.asarray(np.argmax(output, axis=2), dtype=np.uint8)
+        print(f"output shape: {output.shape}")
         # save the predicted image
         if save:
             save_predict(output, name, img_orig, save_seg_dir,overlay=0.5)
