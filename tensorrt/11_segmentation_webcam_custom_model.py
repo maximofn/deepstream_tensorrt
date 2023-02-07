@@ -15,11 +15,16 @@ input_thread = InputThread()
 input_thread.start()
 
 # Create UDP socket
-sock = udp_socket('localhost', 8554, send=True)
+sock_frame = udp_socket('localhost', 8554, send=True)
+sock_mask = udp_socket('localhost', 8555, send=True)
 
 # Open webcam
-video = video(resize=False, width=1920, height=1080, fps=30, name="frame", display=False)
-video.open(device=0)
+CAPTURE_WIDTH = 1920
+CAPTURE_HEIGHT = 1080
+CAPTURE_FPS = 30
+video_frame = video(resize=False, width=CAPTURE_WIDTH, height=CAPTURE_HEIGHT, fps=CAPTURE_FPS, name="frame", display=False)
+video_mask = video(resize=False, width=CAPTURE_WIDTH, height=CAPTURE_HEIGHT, fps=CAPTURE_FPS, name="mask", display=False)
+video_frame.open(device=0)
 
 # Custom model
 print("Creating model")
@@ -70,7 +75,8 @@ t_camera = 0
 t_preprocess = 0
 t_inference = 0
 t_postprocess = 0
-t_bucle = 0
+t_bucle_read_frame = 0
+t_bucle_no_read_frame = 0
 FPS = 0
 
 # Media variables
@@ -81,20 +87,21 @@ t_preprocess_list = []
 t_model_gpu_list = []
 t_inference_list = []
 t_postprocess_list = []
-t_bucle_list = []
+t_bucle_read_frame_list = []
+t_bucle_no_read_frame_list = []
 FPS_list = []
 
 while True:
     t0 = time.time()
     t_start = time.time()
-    ret, frame = video.read()
+    ret, frame = video_frame.read()
     t_camera = time.time() - t0
     if not ret:
         continue
 
     # Preprocess image
     t0 = time.time()
-    frame = cv2.resize(frame, (1920, 1088))
+    frame = cv2.resize(frame, (672, 672))
     t_preprocess = time.time() - t0
 
     # Send model to GPU
@@ -111,35 +118,37 @@ while True:
     t0 = time.time()
     model.eval()
     with torch.no_grad():
-        mask_pred, frame = model(frame)
+        mask, frame = model(frame)
         end = time.time()
     t_inference = time.time() - t0
 
     # Postprocess
     t0 = time.time()
-    mask_pred = mask_pred.detach().cpu().numpy()
+    mask = mask.detach().cpu().numpy()
     frame = frame.detach().cpu().numpy()
     t_postprocess = time.time() - t0
 
     # Bucle time
-    t_bucle = time.time() - t_start
+    t_bucle_no_read_frame = t_preprocess + t_inference + t_postprocess
+    t_bucle_read_frame = time.time() - t_start
 
     # FPS
-    FPS = 1 / t_bucle
+    FPS = 1 / t_bucle_no_read_frame
 
     # Put text
     y = 30
     cv2.putText(frame, f"Modelo en GPU:", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"FPS: {FPS:.2f}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"Image shape: {frame.shape}, img dtype: {frame.dtype}, img max: {frame.max()}, img min: {frame.min()}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
-    cv2.putText(frame, f"Mask shape: {mask_pred.shape}, mask dtype: {mask_pred.dtype}, mask max: {mask_pred.max()}, mask min: {mask_pred.min()}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
+    cv2.putText(frame, f"Mask shape: {mask.shape}, mask dtype: {mask.dtype}, mask max: {mask.max()}, mask min: {mask.min()}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"t camera: {t_camera*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"t preprocess: {t_preprocess*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"t model to gpu: {t_model_gpu*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"t image to gpu: {t_img_gpu*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"t inference: {t_inference*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
     cv2.putText(frame, f"t postprocess: {t_postprocess*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
-    cv2.putText(frame, f"t bucle: {t_bucle*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
+    cv2.putText(frame, f"t bucle (read frame): {t_bucle_read_frame*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
+    cv2.putText(frame, f"t bucle (no read frame): {t_bucle_no_read_frame*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
 
     # Media variables
     iteracctions += 1
@@ -150,7 +159,8 @@ while True:
         t_model_gpu_list.append(t_model_gpu)
         t_inference_list.append(t_inference)
         t_postprocess_list.append(t_postprocess)
-        t_bucle_list.append(t_bucle)
+        t_bucle_read_frame_list.append(t_bucle_read_frame)
+        t_bucle_no_read_frame_list.append(t_bucle_no_read_frame)
         FPS_list.append(FPS)
         cv2.putText(frame, f"Media: {iteracctions} iteracctions", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
         cv2.putText(frame, f"    t read frame {np.mean(t_read_frame_list)*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
@@ -159,20 +169,21 @@ while True:
         cv2.putText(frame, f"    t model to gpu {np.mean(t_model_gpu_list)*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
         cv2.putText(frame, f"    t inference {np.mean(t_inference_list)*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
         cv2.putText(frame, f"    t postprocess {np.mean(t_postprocess_list)*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
-        cv2.putText(frame, f"    t bucle {np.mean(t_bucle_list)*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
+        cv2.putText(frame, f"    t bucle (read frame) {np.mean(t_bucle_read_frame_list)*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
+        cv2.putText(frame, f"    t bucle (no read frame) {np.mean(t_bucle_no_read_frame_list)*1000:.2f} ms", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
         cv2.putText(frame, f"    FPS {np.mean(FPS_list):.2f}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += 30
 
     # Mandamos el frame por el socket
-    success, encoded_frame = video.encode_frame(frame)
+    success, encoded_frame = video_frame.encode_frame(frame)
     if success:
         message = encoded_frame.tobytes(order='C')
-        sock.send(message)
+        sock_frame.send(message)
 
     # Mandamos la máscara por el socket
-    # success, encoded_frame = video.encode_frame(mask_pred)
-    # if success:
-    #     message = encoded_frame.tobytes(order='C')
-    #     sock.send(message)
+    success, encoded_mask = video_mask.encode_frame(mask)
+    if success:
+        message = encoded_mask.tobytes(order='C')
+        sock_mask.send(message)
 
     # If user press type 'q' into the console in non blocking mode, exit
     if input_thread.get_data() is not None and input_thread.get_data().strip() == 'q':
@@ -182,5 +193,7 @@ while True:
 
 
 # Cerramos el socket y la cámara
-sock.close()
-video.close()
+sock_frame.close()
+sock_mask.close()
+video_frame.close()
+video_mask.close()
