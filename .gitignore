@@ -16,3 +16,4 @@ tensorrt/*.trt
 tensorrt/*.engine
 tensorrt/__pycache__
 pytorch_tensorrt
+*/__pycache__
