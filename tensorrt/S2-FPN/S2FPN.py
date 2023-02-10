@@ -10,11 +10,19 @@ import cv2
 navig_palette = [170, 170, 170, 0, 255, 0, 255, 0, 0, 0, 120, 255, 0, 0, 255, 255,255,153]
 labels_names = ["path","travesable","no-travesable","sky","person","vehicle"]
 
-def colorize_mask(mask):
+def colorize_mask(mask, img_orig=None, overlay=0):
     # mask: numpy array of the mask
-    new_mask = Image.fromarray(mask.astype(np.uint8)).convert('P')
-    new_mask.putpalette(navig_palette)
-    return new_mask #gpu ids (default: 0)
+    # img_orig: original image
+    # overlay: overlay factor (0-1)
+    colorized_mask = Image.fromarray(mask.astype(np.uint8)).convert('P')
+    colorized_mask.putpalette(navig_palette)
+    colorized_mask = np.array(colorized_mask.convert("RGB")) 
+    colorized_mask = colorized_mask[:, :, ::-1].copy() 
+    if overlay and img_orig is not None:
+        result = cv2.addWeighted(img_orig, overlay, colorized_mask, 1-overlay, 0)
+        return result
+    else:
+        return colorized_mask
 
 def save_predict(output, img_name,img_orig, save_path,overlay=0):
     output_color = colorize_mask(output)
