@@ -14,7 +14,7 @@ import segmentation_models_pytorch as smp
 
 import sys
 sys.path.append('S2-FPN')
-from builders.model_builder import build_model
+import S2FPN
 
 # Create input thread
 input_thread = InputThread()
@@ -63,29 +63,23 @@ t_postprocess_list = []
 t_bucle_list = []
 FPS_list = []
 
-# Custom model
+# Build the model
 net="SSFPN" #model name: [DSANet,SPFNet,SSFPN]
 classes = 11 #number of classes
-def load_model(net, classes, gpu_id = 0): 
-    # os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
-    if not torch.cuda.is_available():
-        raise Exception("no GPU found or wrong gpu id")
+print(f"Bulding model: {net}", end=" ")
+model = S2FPN.load_model(net, classes)
+print("done")
 
-    # build the model
-    model = build_model(net, num_classes=classes)
-    model = model.cuda()  # using GPU for inference
-    # cudnn.benchmark = True
-
-    return model
-print("Creating model... ", end="")
-model = load_model(net, classes)
-model.eval()
-print("Done")
+# Loading checkpoint
+checkpoint_path = "S2-FPN/weigths/SSFPN18.pth"
+print(f"loading checkpoint '{checkpoint_path}'", end=" ")
+model = S2FPN.load_checkpoints(model, checkpoint_path)
+print("done")
 
 # # convert to TensorRT feeding sample data as input
 # print("Converting to TensorRT")
-width = 360 #1920
-height = 360 #1088
+width = 240 #1920
+height = 240 #1088
 # x = np.ones((width, height, 3), dtype=np.uint8)
 # x = torch.from_numpy(x).float() # numpy to tensor
 # x = x.cuda()                    # move image to GPU
@@ -104,8 +98,8 @@ while True:
     else:
         # Read image S2-FPN/images/0001TP_006690.png
         frame = cv2.imread('S2-FPN/images/0001TP_006690.png', cv2.IMREAD_COLOR)
-        img = frame.copy()
-        img = np.asarray(img, np.float32)
+        # img = frame.copy()
+        # img = np.asarray(img, np.float32)
         ret = True
     t_camera = time.time() - t0
     if not ret:
@@ -115,43 +109,47 @@ while True:
     t0 = time.time()
     if WEBCAM:
         img = cv2.resize(frame, (height, width))    # Resize
-        img = torch.from_numpy(img)                 # numpy to tensor
-        img = img.cuda()                            # move image to GPU
-        img = torch.flip(img, dims=[2])             # RGB to BGR
-        # img = img / 255.0                           # 0-255 to 0-1
-        img = img.type(torch.float32)             # uint8 to float32
-        img = img.permute(2, 0, 1)                # HWC to CHW
-        img = img.unsqueeze(0)                    # Add batch dimension
+        # img = torch.from_numpy(img)                 # numpy to tensor
+        # img = img.cuda()                            # move image to GPU
+        # img = torch.flip(img, dims=[2])             # RGB to BGR
+        # # img = img / 255.0                           # 0-255 to 0-1
+        # img = img.type(torch.float32)             # uint8 to float32
+        # img = img.permute(2, 0, 1)                # HWC to CHW
+        # img = img.unsqueeze(0)                    # Add batch dimension
     else:
-        img = img[:, :, ::-1]  # change to RGB
-        img = img.transpose((2, 0, 1)).copy()  # HWC -> CHW
-        img = torch.from_numpy(img)
-        img = img[None,:,:,:]
-        # img = img.cuda()
-        with torch.no_grad():
-            input_var = torch.autograd.Variable(img).cuda()
+        img = cv2.resize(frame, (height, width))    # Resize
+        # img = img[:, :, ::-1]  # change to RGB
+        # img = img.transpose((2, 0, 1)).copy()  # HWC -> CHW
+        # img = torch.from_numpy(img)
+        # img = img[None,:,:,:]
+        # # img = img.cuda()
+        # with torch.no_grad():
+        #     input_var = torch.autograd.Variable(img).cuda()
     t_preprocess = time.time() - t0
 
     # Inference
     t0 = time.time()
     # mask = model_trt(img)
     if WEBCAM:
-        mask = model(img)
-        mask = mask[0].squeeze(0)
+        mask, img = S2FPN.inference(model, img_orig=img)
+        # mask = mask[0].squeeze(0)
     else:
-        mask = model(input_var)
-        torch.cuda.synchronize()
+        mask, img = S2FPN.inference(model, img_orig=img)
+        # mask = model(input_var)
+        # torch.cuda.synchronize()
     t_inference = time.time() - t0
 
     # Postprocess
     t0 = time.time()
     if WEBCAM:
-        mask = torch.argmax(mask, axis=0).type(torch.uint8)
-        mask = mask.detach().cpu().numpy()
+        pass
+    #     mask = torch.argmax(mask, axis=0).type(torch.uint8)
+    #     mask = mask.detach().cpu().numpy()
     else:
-        mask = mask.cpu().data[0].numpy()
-        mask = mask.transpose(1, 2, 0)
-        mask = np.asarray(np.argmax(mask, axis=2), dtype=np.uint8)
+        pass
+        # mask = mask.cpu().data[0].numpy()
+        # mask = mask.transpose(1, 2, 0)
+        # mask = np.asarray(np.argmax(mask, axis=2), dtype=np.uint8)
     t_postprocess = time.time() - t0
 
     # Bucle time
