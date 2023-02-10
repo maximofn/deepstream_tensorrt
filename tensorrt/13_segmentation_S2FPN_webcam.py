@@ -23,6 +23,7 @@ input_thread.start()
 # Create UDP socket
 sock_frame = udp_socket('localhost', 8554, send=True)
 sock_mask = udp_socket('localhost', 8555, send=True)
+sock_coloridez_mask = udp_socket('localhost', 8556, send=True)
 
 # Open webcam
 WEBCAM = True
@@ -33,6 +34,7 @@ CAPTURE_HEIGHT = 1080
 CAPTURE_FPS = 30
 video_frame = video(resize=False, width=CAPTURE_WIDTH, height=CAPTURE_HEIGHT, fps=CAPTURE_FPS, name="frame", display=False)
 video_mask = video(resize=False, width=CAPTURE_WIDTH, height=CAPTURE_HEIGHT, fps=CAPTURE_FPS, name="mask", display=False)
+video_coloridez_mask = video(resize=False, width=CAPTURE_WIDTH, height=CAPTURE_HEIGHT, fps=CAPTURE_FPS, name="coloridez_mask", display=False)
 video_frame.open(device=0)
 
 # Configuration of text on the screen
@@ -78,8 +80,8 @@ print("done")
 
 # # convert to TensorRT feeding sample data as input
 # print("Converting to TensorRT")
-width = 240 #1920
-height = 240 #1088
+width = 1000 #1920
+height = 1000 #1088
 # x = np.ones((width, height, 3), dtype=np.uint8)
 # x = torch.from_numpy(x).float() # numpy to tensor
 # x = x.cuda()                    # move image to GPU
@@ -199,6 +201,13 @@ while True:
         message = encoded_mask.tobytes(order='C')
         sock_mask.send(message)
 
+    # Mandamos la máscara coloreada por el socket
+    coloridez_mask = S2FPN.colorize_mask(mask, img, overlay=0.3)
+    success, encoded_colorized_mask = video_coloridez_mask.encode_frame(coloridez_mask)
+    if success:
+        message = encoded_colorized_mask.tobytes(order='C')
+        sock_coloridez_mask.send(message)
+
     # If user press type 'q' into the console in non blocking mode, exit
     if input_thread.get_data() is not None and input_thread.get_data().strip() == 'q':
         print("Se ha ha parado por el usuario")
@@ -209,5 +218,7 @@ while True:
 # Cerramos el socket y la cámara
 sock_frame.close()
 sock_mask.close()
+sock_coloridez_mask.close()
 video_frame.close()
 video_mask.close()
+video_coloridez_mask.close()
