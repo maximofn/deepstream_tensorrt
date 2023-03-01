@@ -10,11 +10,14 @@ from thread import InputThread
 from udp_socket import udp_socket
 from video import video
 import segmentation_models_pytorch as smp
-# import matplotlib.pyplot as plt
 
 import sys
 sys.path.append('S2-FPN')
 import S2FPN
+
+from torch.onnx import OperatorExportTypes
+import subprocess
+
 
 # Create input thread
 input_thread = InputThread()
@@ -78,11 +81,11 @@ print(f"loading checkpoint '{checkpoint_path}'", end=" ")
 model = S2FPN.load_checkpoints(model, checkpoint_path)
 print("done")
 
-# # convert to TensorRT feeding sample data as input
+# convert to TensorRT feeding sample data as input
 # print("Converting to TensorRT")
-width = 1000 #1920
-height = 1000 #1088
-# x = np.ones((width, height, 3), dtype=np.uint8)
+width = 600 #1920
+height = 600 #1088
+# x = np.ones((1, 3, width, height), dtype=np.uint8)
 # x = torch.from_numpy(x).float() # numpy to tensor
 # x = x.cuda()                    # move image to GPU
 # x = torch.flip(x, dims=[2])     # RGB to BGR
@@ -91,6 +94,28 @@ height = 1000 #1088
 # # x = x.unsqueeze(0)            # Add batch dimension
 # model_trt = torch2trt(model, [x])
 # print("Converted to TensorRT")
+
+# Export model to ONNX
+print("Exporting model to ONNX...", end="")
+onnx_file_with_cuda = f"S2FPN.onnx"
+dummy_input=torch.randn(1, 3, width, height).cuda()
+output = torch.onnx.export(
+    model=model,
+    args=dummy_input,
+    f=onnx_file_with_cuda,
+    export_params=True,
+    verbose=False,
+    training=torch.onnx.TrainingMode.EVAL,
+    input_names=["input"],
+    output_names=["output"],
+    operator_export_type=OperatorExportTypes.ONNX)
+print("\tdone exporting to ONNX")
+
+# Export model to TensorRT
+print("Exporting model to TensorRt...", end="")
+command = "/usr/src/tensorrt/bin/trtexec --onnx=S2FPN.onnx --saveEngine=S2FPN_terminal.engine  --explicitBatch --inputIOFormats=fp16:chw --outputIOFormats=fp16:chw --fp16"
+subprocess.call(command, shell=True)
+print("\tdone exporting to TensorRt")
 
 while True:
     t0 = time.time()
@@ -190,7 +215,7 @@ while True:
         cv2.putText(frame, f"    FPS {np.mean(FPS_list):.2f}", (10, y), font, fontScale, fontColor, lineThickness, lineType); y += jump
 
     # Mandamos el frame por el socket
-    success, encoded_frame = video_frame.encode_frame(frame)
+    success, encoded_frame = video_frame.encode_frame(frame, format='.jpg')
     if success:
         message = encoded_frame.tobytes(order='C')
         sock_frame.send(message)
@@ -203,7 +228,7 @@ while True:
 
     # Mandamos la máscara coloreada por el socket
     coloridez_mask = S2FPN.colorize_mask(mask, img, overlay=0.3)
-    success, encoded_colorized_mask = video_coloridez_mask.encode_frame(coloridez_mask)
+    success, encoded_colorized_mask = video_coloridez_mask.encode_frame(coloridez_mask, format='.jpg')
     if success:
         message = encoded_colorized_mask.tobytes(order='C')
         sock_coloridez_mask.send(message)

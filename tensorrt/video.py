@@ -68,7 +68,7 @@ class video():
         else:
             return True
     
-    def encode_frame(self, frame, format='.jpg'):
+    def encode_frame(self, frame, format='.png'):
         return cv2.imencode(format, frame, [cv2.IMWRITE_JPEG_QUALITY,80])
     
     def decode_frame(self, buffer, codec='mp4v', fps=30):

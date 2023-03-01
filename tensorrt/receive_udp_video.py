@@ -26,14 +26,8 @@ while True:
     # Si hemos recibido la máscara copleta, la mostramos
     if socket_mask.receive_frame_ready():
         mask_decoded = socket_mask.get_frame_decoded()
-        # Chequeamos si los tres canales de la máscara son iguales
-        if (mask_decoded[:, :, 0] == mask_decoded[:, :, 1]).all() and (mask_decoded[:, :, 1] == mask_decoded[:, :, 2]).all():
-            mask_decoded = mask_decoded[:, :, 0]
-        else:
-            print("Los tres canales de la máscara no son iguales")
         if RESIZE: mask_decoded = mask.resize_frame(mask_decoded, width=127, height=170)
-        if frame_decoded is not None:
-            if not mask.maskshow(mask_decoded, img=frame_decoded, overlay=0.2, colorize=True): break
+        if not mask.maskshow(mask_decoded, img=frame_decoded, overlay=0.2, colorize=True): break
         
     socket_mask_colorized.receive()
     # Si hemos recibido la máscara coloreada copleta, la mostramos
@@ -42,7 +36,6 @@ while True:
         if RESIZE: mask_colorized_decoded = mask_colorized.resize_frame(mask_colorized_decoded, width=127, height=170)
         if not mask_colorized.imshow(mask_colorized_decoded): break
 
-# Cerramos la ventana y el socket
 frame.close()
 mask.close()
 mask_colorized.close()

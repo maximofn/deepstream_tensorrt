@@ -58,8 +58,11 @@ class udp_socket():
         else:
             return False
 
+    def get_encode_frame(self):
+        return self.frame
+
     def decode_frame(self):
-        self.frame_decoded = cv2.imdecode(self.frame, 1)
+        self.frame_decoded = cv2.imdecode(self.frame, -1)
         self.shape_frame_decoded = self.frame_decoded.shape
     
     def get_frame_decoded(self):
